@@ -1,0 +1,139 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+HOSTNAME = "foobar"
+IP_ADDRESS = "192.168.33.30"
+
+SOURCE = "../src"
+TARGET = "/srv/httpd/"
+
+# 53, 54, 55, 56
+PHP_VERSION = "55"
+PHP_PACKAGES = %w(
+  php
+  php-devel
+  php-common
+  php-cli
+  php-pear
+  php-gd
+  php-xml
+  php-mbstring
+  php-mcrypt
+  php-pdo
+  php-mysqlnd
+  php-pgsql
+  php-imap
+  php-pecl-xdebug
+)
+
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "CentOS-6.6-dev"
+  config.vm.box_url = "https://github.com/oppara/packer-templates/releases/download/CentOS-6.6-dev/CentOS-6.6-dev-virtualbox.box"
+
+  if Vagrant.has_plugin?("vagrant-cachier")
+    config.cache.scope = :box
+  end
+
+  if Vagrant.has_plugin?("vagrant-vbguest")
+    config.vbguest.auto_update = false
+  end
+
+  if defined? HOSTNAME
+    config.vm.hostname = HOSTNAME
+  end
+
+  if defined? IP_ADDRESS
+    config.vm.network :private_network, ip: IP_ADDRESS
+  end
+
+  config.vm.synced_folder SOURCE, TARGET, \
+        create: true, owner: 'vagrant', group: 'vagrant', \
+        mount_options: ['dmode=777,fmode=666']
+
+  config.vm.provider :virtualbox do |vb|
+    if defined? HOSTNAME
+      vb.name = HOSTNAME
+    end
+    # vb.gui = true
+  end
+
+  case PHP_VERSION
+  when "55", "56" then
+    version = PHP_VERSION + "u"
+  when "54" then
+    version = PHP_VERSION
+  else
+    version = ""
+  end
+  package_list = PHP_PACKAGES.map do |item|
+    item.gsub(/php/, 'php' + version)
+  end
+
+  if PHP_VERSION == "53" then
+    package_list << "php-pecl-apc"
+  elsif PHP_VERSION == "54" then
+    package_list << "php54-pecl-apc"
+  else
+    package_list << "php" + version + "-opcache"
+  end
+  packages = package_list.join(" ")
+
+  config.vm.provision :shell, :inline => <<-EOT
+    /sbin/service httpd stop
+    /sbin/service postgresql-9.3 stop
+
+    #
+    # yum repository
+    #
+    rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-6
+    rpm -ivh https://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+
+    rpm --import http://dl.iuscommunity.org/pub/ius/IUS-COMMUNITY-GPG-KEY
+    rpm -ivh http://dl.iuscommunity.org/pub/ius/stable/CentOS/6/x86_64/ius-release-1.0-13.ius.centos6.noarch.rpm
+
+    rpm --import http://rpms.famillecollet.com/RPM-GPG-KEY-remi
+    rpm -ivh http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+
+    yum -y install libmcrypt-devel
+
+    #
+    # httpd
+    #
+    ln -s /vagrant/etc/dev.conf /etc/httpd/conf.d/.
+
+
+    #
+    # php
+    #
+    yum -y install #{packages}
+    touch /var/log/php_error.log && chmod 666 /var/log/php_error.log
+    cp -f /vagrant/etc/php.ini#{PHP_VERSION} /etc/php.ini
+
+    #
+    # composer
+    #
+    curl -sS https://getcomposer.org/installer | php
+    chmod +x composer.phar
+    mv composer.phar /usr/bin/composer
+
+    /sbin/service postgresql-9.3 start
+    /sbin/service httpd start
+
+    # #
+    # # phing, phpcs
+    # #
+    # pear channel-update pear.php.net
+    # pear upgrade PEAR
+    # pear config-set auto_discover 1
+    # pear install PHP_CodeSniffer
+    # pear install pear.phing.info/phing
+
+    # # Migration
+    # cd /path/to/cake/app
+    # export CAKE_ENV=vagrant; sh ./Console/cake Migrations.migration run all
+  EOT
+end
