@@ -132,10 +132,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # pear install PHP_CodeSniffer
     # pear install pear.phing.info/phing
 
-    #
-    # phpunit
-    #
-    sudo -u vagrant composer global require phpunit/phpunit:3.7.*
+    # #
+    # # phpunit
+    # #
+    # sudo -u vagrant composer global require phpunit/phpunit:3.7.*
 
     # # Migration
     # cd /path/to/cake/app
