@@ -1,8 +1,10 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+Dotenv.load
+
 HOSTNAME = "foobar"
-IP_ADDRESS = "192.168.33.30"
+IP_ADDRESS = ENV["VAGRANT_IP_ADDRESS"] ? ENV["VAGRANT_IP_ADDRESS"] : "192.168.33.30"
 
 SOURCE = "../src"
 TARGET = "/srv/httpd/"
