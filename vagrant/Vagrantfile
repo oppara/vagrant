@@ -44,20 +44,18 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vbguest.auto_update = false
   end
 
-  if defined? HOSTNAME
+  if HOSTNAME != ""
     config.vm.hostname = HOSTNAME
   end
 
-  if defined? IP_ADDRESS
-    config.vm.network :private_network, ip: IP_ADDRESS
-  end
+  config.vm.network :private_network, ip: IP_ADDRESS
 
   config.vm.synced_folder SOURCE, TARGET, \
         create: true, owner: 'vagrant', group: 'vagrant', \
         mount_options: ['dmode=777,fmode=666']
 
   config.vm.provider :virtualbox do |vb|
-    if defined? HOSTNAME
+    if HOSTNAME != ""
       vb.name = HOSTNAME
     end
     # vb.gui = true
