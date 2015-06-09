@@ -22,7 +22,6 @@ PHP_PACKAGES = %w(
   php-mbstring
   php-mcrypt
   php-pdo
-  php-mysqlnd
   php-pgsql
   php-imap
   php-pecl-xdebug
@@ -64,21 +63,17 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   case PHP_VERSION
   when "55", "56" then
     version = PHP_VERSION + "u"
+    PHP_PACKAGES << "php-mysqlnd" << "php-opcache"
   when "54" then
     version = PHP_VERSION
+    PHP_PACKAGES << "php-mysqlnd" << "php-pecl-apc"
   else
     version = ""
-  end
-  package_list = PHP_PACKAGES.map do |item|
-    item.gsub(/php/, 'php' + version)
+    PHP_PACKAGES << "php-mysql" << "php-pecl-apc"
   end
 
-  if PHP_VERSION == "53" then
-    package_list << "php-pecl-apc"
-  elsif PHP_VERSION == "54" then
-    package_list << "php54-pecl-apc"
-  else
-    package_list << "php" + version + "-opcache"
+  package_list = PHP_PACKAGES.map do |item|
+    item.gsub(/php/, 'php' + version)
   end
   packages = package_list.join(" ")
 
