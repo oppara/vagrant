@@ -5,6 +5,7 @@ Dotenv.load
 
 HOSTNAME = ENV["VAGRANT_HOSTNAME"] ? ENV["VAGRANT_HOSTNAME"] : ""
 IP_ADDRESS = ENV["VAGRANT_IP_ADDRESS"] ? ENV["VAGRANT_IP_ADDRESS"] : "192.168.33.30"
+DB_NAME = ENV["VAGRANT_DB_NAME"] ? ENV["VAGRANT_DB_NAME"] : "foo"
 
 SOURCE = "../src"
 TARGET = "/srv/httpd/"
@@ -99,6 +100,22 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # httpd
     #
     ln -s /vagrant/etc/dev.conf /etc/httpd/conf.d/.
+
+    # #
+    # # mysql
+    # #
+    # yum -y install yum-plugin-replace
+    # yum -y install mysql
+    # yum -y replace mysql --replace-with mysql56u
+    # yum -y --enablerepo=ius install mysql56u-server mysql56u-devel
+    # cp -f /vagrant/etc/my.cnf /etc/my.cnf
+    # chkconfig mysqld on
+    # /sbin/service mysqld start
+    # mysql -u root -e "create database #{DB_NAME}";
+    # mysql -u root -e "create database #{DB_NAME}_test";
+    # mysql -u root -e "grant all privileges on *.* to vagrant@'%' identified by 'vagrant'";
+    # mysql -u root -e "grant all privileges on *.* to vagrant@'localhost' identified by 'vagrant'";
+    # mysql -u root -e "grant all privileges on *.* to vagrant@'127.0.0.1' identified by 'vagrant'";
 
 
     #
