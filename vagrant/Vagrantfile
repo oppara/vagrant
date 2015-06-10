@@ -5,6 +5,7 @@ Dotenv.load
 
 HOSTNAME = "foo"
 DB_NAME = "foo"
+DB_USER = "vagrant"
 IP_ADDRESS = ENV["VAGRANT_IP_ADDRESS"] ? ENV["VAGRANT_IP_ADDRESS"] : "192.168.33.30"
 
 SOURCE = "../src"
@@ -113,9 +114,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # /sbin/service mysqld start
     # mysql -u root -e "create database #{DB_NAME}";
     # mysql -u root -e "create database #{DB_NAME}_test";
-    # mysql -u root -e "grant all privileges on *.* to vagrant@'%' identified by 'vagrant'";
-    # mysql -u root -e "grant all privileges on *.* to vagrant@'localhost' identified by 'vagrant'";
-    # mysql -u root -e "grant all privileges on *.* to vagrant@'127.0.0.1' identified by 'vagrant'";
+    # mysql -u root -e "grant all privileges on *.* to #{DB_USER}@'%' identified by '#{DB_USER}'";
+    # mysql -u root -e "grant all privileges on *.* to #{DB_USER}@'localhost' identified by '#{DB_USER}'";
+    # mysql -u root -e "grant all privileges on *.* to #{DB_USER}@'127.0.0.1' identified by '#{DB_USER}'";
 
 
     #
@@ -152,9 +153,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # #
     # # postgresql
     # #
-    # /usr/bin/createuser -d -A -S -U postgres vagrant
-    # /usr/bin/createdb -Uvagrant -E UTF-8 -T template0 -O vagrant #{DB_NAME}
-    # /usr/bin/createdb -Uvagrant -E UTF-8 -T template0 -O vagrant #{DB_NAME}_test
+    # /usr/bin/createuser -d -A -S -U postgres #{DB_USER}
+    # /usr/bin/createdb -U#{DB_USER} -E UTF-8 -T template0 -O #{DB_USER} #{DB_NAME}
+    # /usr/bin/createdb -U#{DB_USER} -E UTF-8 -T template0 -O #{DB_USER} #{DB_NAME}_test
 
     # # Migration
     # cd /path/to/cake/app
