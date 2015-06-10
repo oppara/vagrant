@@ -149,6 +149,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # #
     # sudo -u vagrant composer global require phpunit/phpunit:3.7.*
 
+    # #
+    # # postgresql
+    # #
+    # /usr/bin/createuser -d -A -S -U postgres vagrant
+    # /usr/bin/createdb -Uvagrant -E UTF-8 -T template0 -O vagrant #{DB_NAME}
+    # /usr/bin/createdb -Uvagrant -E UTF-8 -T template0 -O vagrant #{DB_NAME}_test
+
     # # Migration
     # cd /path/to/cake/app
     # export CAKE_ENV=vagrant; sh ./Console/cake Migrations.migration run all
