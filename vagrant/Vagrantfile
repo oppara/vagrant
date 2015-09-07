@@ -102,7 +102,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     #
     # httpd
     #
-    ln -s /vagrant/etc/dev.conf /etc/httpd/conf.d/.
+    cp -f /vagrant/etc/dev.conf /etc/httpd/conf.d/.
 
     # #
     # # mysql
