@@ -1,7 +1,9 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-Dotenv.load
+if Vagrant.has_plugin?("dotenv")
+  Dotenv.load
+end
 
 HOSTNAME = "foo"
 DB_NAME = "foo"
