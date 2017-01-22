@@ -1,0 +1,20 @@
+{
+    "name": "e2-vagrant",
+    "repositories": [
+        {
+            "type": "pear",
+            "url": "http://pear.cakephp.org"
+        }
+    ],
+    "require": {
+        "cakephp/cakephp": "2.*"
+    },
+    "require-dev": {
+        "cakephp/debug_kit": "2.2.*",
+        "cakedc/migrations": "2.3.*",
+        "phpunit/phpunit": "3.7.*"
+    },
+    "config": {
+        "vendor-dir": "Vendor/"
+    }
+}

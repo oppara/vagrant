@@ -1,43 +1,49 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+# see http://blog.glidenote.com/blog/2014/02/26/vagrant-dotenv/
 if Vagrant.has_plugin?("dotenv")
   Dotenv.load
 end
 
-HOSTNAME = "foo"
-DB_NAME = "foo"
-DB_USER = "vagrant"
-IP_ADDRESS = ENV["VAGRANT_IP_ADDRESS"] ? ENV["VAGRANT_IP_ADDRESS"] : "192.168.33.30"
+HOSTNAME = "vagrant-sample"
+FQDN = "vagrant-sample.local"
+IP_ADDRESS = ENV["VAGRANT_IP_ADDRESS"] ? ENV["VAGRANT_IP_ADDRESS"] : "192.168.10.10"
 
+# 0: MySQLを使用しない
+# 1: MySQLを使用する
+USE_MYSQL = 1
+
+# 0: PostgreSQLを使用しない
+# 1: PostgreSQLを使用する
+USE_POSTGRES = 1
+
+# 0: CakePHPをprovisionしない
+# 2: CakePHP2系をprovisionする
+# 3: CakePHP3系をprovisionする
+CAKEPHP = 0
+
+# DB設定
+DB_USER = "vagrant"
+DB_PASS = ""
+DB_NAME = "vagrant_sample_develop"
+TEST_DB_NAME = "vagrant_sample_test"
+
+# インストールするPHPのバージョン
+# 53, 54, 55, 56, 70
+PHP_VERSION = "70"
+
+# synced_folder設定
 SOURCE = "../src"
 TARGET = "/srv/httpd/"
 
-# 53, 54, 55, 56
-PHP_VERSION = "55"
-PHP_PACKAGES = %w(
-  php
-  php-devel
-  php-common
-  php-cli
-  php-pear
-  php-gd
-  php-xml
-  php-mbstring
-  php-mcrypt
-  php-pdo
-  php-pgsql
-  php-imap
-  php-pecl-xdebug
-)
 
 
 # Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  config.vm.box = "CentOS-6.6-dev"
-  config.vm.box_url = "https://github.com/oppara/packer-templates/releases/download/CentOS-6.6-dev/CentOS-6.6-dev-virtualbox.box"
+  config.vm.box = "oppara/CentOS-6.7-dev"
 
   if Vagrant.has_plugin?("vagrant-cachier")
     config.cache.scope = :box
@@ -47,120 +53,120 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vbguest.auto_update = false
   end
 
-  if HOSTNAME != ""
-    config.vm.hostname = HOSTNAME
+  if Vagrant.has_plugin?("vagrant-hostsupdater")
+    config.hostsupdater.aliases = [
+      FQDN
+    ]
   end
-
-  config.vm.network :private_network, ip: IP_ADDRESS
 
   config.vm.synced_folder SOURCE, TARGET, \
         create: true, owner: 'vagrant', group: 'vagrant', \
-        mount_options: ['dmode=777,fmode=666']
+        mount_options: ['dmode=777,fmode=776']
+
+  if defined? IP_ADDRESS
+    config.vm.network :private_network, ip: IP_ADDRESS
+  end
+
+  if defined? HOSTNAME
+    config.vm.hostname = HOSTNAME
+  end
 
   config.vm.provider :virtualbox do |vb|
-    if HOSTNAME != ""
+    if defined? HOSTNAME
       vb.name = HOSTNAME
     end
     # vb.gui = true
+    # vb.memory = "2048"
   end
 
-  case PHP_VERSION
-  when "55", "56" then
-    version = PHP_VERSION + "u"
-    PHP_PACKAGES << "php-mysqlnd" << "php-opcache"
-  when "54" then
-    version = PHP_VERSION
-    PHP_PACKAGES << "php-mysqlnd" << "php-pecl-apc"
-  else
-    version = ""
-    PHP_PACKAGES << "php-mysql" << "php-pecl-apc"
+  if USE_MYSQL == 1 then
+    config.vm.provision "shell" do |s|
+      s.name = "setup mysql database and user"
+      s.env = {:DB_NAME => DB_NAME, :TEST_DB_NAME => TEST_DB_NAME, :DB_USER => DB_USER, :DB_PASS => DB_PASS}
+      s.path = "scripts/mysql.sh"
+    end
   end
 
-  package_list = PHP_PACKAGES.map do |item|
-    item.gsub(/php/, 'php' + version)
+  if USE_POSTGRES == 1 then
+    config.vm.provision "shell" do |s|
+      s.name = "setup postgresql database and user"
+      s.env = {:DB_NAME => DB_NAME, :TEST_DB_NAME => TEST_DB_NAME, :DB_USER => DB_USER, :DB_PASS => DB_PASS}
+      s.path = "scripts/psql.sh"
+    end
   end
-  packages = package_list.join(" ")
+
+  config.vm.provision :shell, :inline => <<-SHELL
+    /sbin/service httpd stop
+    /sbin/service postgresql-9.5 stop
+    /sbin/service mysqld stop
+  SHELL
+
+  config.vm.provision "shell" do |s|
+    s.name = "setup PHP#{PHP_VERSION}"
+    s.env = {:VERSION => PHP_VERSION}
+    s.path = "scripts/php.sh"
+  end
+
+  config.vm.provision "shell" do |s|
+    s.name = "setup composer"
+    s.path = "scripts/php_composer.sh"
+  end
+
+  if CAKEPHP > 1 then
+    config.vm.provision "shell" do |s|
+      s.name = "setup CakePHP#{CAKEPHP}"
+      s.env = {
+        :DB_NAME => DB_NAME,
+        :TEST_DB_NAME => TEST_DB_NAME,
+        :DB_USER => DB_USER,
+        :DB_PASS => DB_PASS,
+        :USE_POSTGRES => USE_POSTGRES,
+        :USE_MYSQL => USE_MYSQL,
+      }
+      s.path = "scripts/cakephp#{CAKEPHP}.sh"
+    end
+  end
 
   config.vm.provision :shell, :inline => <<-EOT
-    /sbin/service httpd stop
-    /sbin/service postgresql-9.3 stop
+    if [[ #{USE_POSTGRES} == 1 ]]; then
+      /sbin/service postgresql-9.5 start
+    fi
 
-    #
-    # yum repository
-    #
-    rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-6
-    rpm -ivh https://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+    if [[ #{USE_MYSQL} == 1 ]]; then
+      /sbin/service mysqld start
+    fi
 
-    rpm --import http://dl.iuscommunity.org/pub/ius/IUS-COMMUNITY-GPG-KEY
-    rpm -ivh http://dl.iuscommunity.org/pub/ius/stable/CentOS/6/x86_64/ius-release-1.0-14.ius.centos6.noarch.rpm
+    cp -f /vagrant/etc/dev.conf /etc/httpd/conf.d/
+    cp -f /vagrant/etc/httpd-php.conf /etc/httpd/conf.d/
 
-    rpm --import http://rpms.famillecollet.com/RPM-GPG-KEY-remi
-    rpm -ivh http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+    conf=/etc/httpd/conf.d/dev.conf
+    if [[ #{CAKEPHP} == 0 ]]; then
+      mkdir /srv/httpd/htdocs
+      echo "<?php\nphpinfo();" > /srv/httpd/htdocs/index.php
+    fi
+    if [[ #{CAKEPHP} == 2 ]]; then
+      sed -i -e 's@DocumentRoot "/srv/httpd/htdocs"@DocumentRoot "/srv/httpd/app/webroot"@g' ${conf}
+      sed -i -e 's@<Directory "/srv/httpd/htdocs">@<Directory "/srv/httpd/app/webroot">@g' ${conf}
+    fi
+    if [[ #{CAKEPHP} == 3 ]]; then
+      sed -i -e 's@DocumentRoot "/srv/httpd/htdocs"@DocumentRoot "/srv/httpd/webroot"@g' ${conf}
+      sed -i -e 's@<Directory "/srv/httpd/htdocs">@<Directory "/srv/httpd/webroot">@g' ${conf}
+    fi
 
-    yum -y install libmcrypt-devel
+    if [[ -n #{FQDN} ]]; then
+      sed -i -e "s@#ServerName DUMMY@ServerName #{FQDN}@" ${conf}
+    fi
 
-    #
-    # httpd
-    #
-    cp -f /vagrant/etc/dev.conf /etc/httpd/conf.d/.
-
-    # #
-    # # mysql
-    # #
-    # yum -y install yum-plugin-replace
-    # yum -y install mysql
-    # yum -y replace mysql --replace-with mysql56u
-    # yum -y --enablerepo=ius install mysql56u-server mysql56u-devel
-    # cp -f /vagrant/etc/my.cnf /etc/my.cnf
-    # chkconfig mysqld on
-    # /sbin/service mysqld start
-    # mysql -u root -e "create database #{DB_NAME}";
-    # mysql -u root -e "create database #{DB_NAME}_test";
-    # mysql -u root -e "grant all privileges on *.* to #{DB_USER}@'%' identified by '#{DB_USER}'";
-    # mysql -u root -e "grant all privileges on *.* to #{DB_USER}@'localhost' identified by '#{DB_USER}'";
-    # mysql -u root -e "grant all privileges on *.* to #{DB_USER}@'127.0.0.1' identified by '#{DB_USER}'";
-
-
-    #
-    # php
-    #
-    yum -y install #{packages}
-    touch /var/log/php_error.log && chmod 666 /var/log/php_error.log
-    cp -f /vagrant/etc/php.ini#{PHP_VERSION} /etc/php.ini
-
-    #
-    # composer
-    #
-    curl -sS https://getcomposer.org/installer | php
-    chmod +x composer.phar
-    mv composer.phar /usr/bin/composer
-
-    /sbin/service postgresql-9.3 start
     /sbin/service httpd start
-
-    # #
-    # # phing, phpcs
-    # #
-    # pear channel-update pear.php.net
-    # pear upgrade PEAR
-    # pear config-set auto_discover 1
-    # pear install PHP_CodeSniffer
-    # pear install pear.phing.info/phing
-
-    # #
-    # # phpunit
-    # #
-    # sudo -u vagrant composer global require phpunit/phpunit:3.7.*
-
-    # #
-    # # postgresql
-    # #
-    # /usr/bin/createuser -d -A -S -U postgres #{DB_USER}
-    # /usr/bin/createdb -U#{DB_USER} -E UTF-8 -T template0 -O #{DB_USER} #{DB_NAME}
-    # /usr/bin/createdb -U#{DB_USER} -E UTF-8 -T template0 -O #{DB_USER} #{DB_NAME}_test
-
-    # # Migration
-    # cd /path/to/cake/app
-    # export CAKE_ENV=vagrant; sh ./Console/cake Migrations.migration run all
   EOT
+
+  # config.vm.provision :shell, :inline => <<-SHELL
+    # #
+    # # migration
+    # #
+    # export PATH="/usr/local/bin:${PATH}"
+    # git checkout -b develop origin/develop
+    # cd /srv/httpd/app
+    # export CAKE_ENV=development; bash ./Console/cake Migrations.migration run all
+  # SHELL
 end
