@@ -30,8 +30,8 @@ DB_NAME = "vagrant_sample_develop"
 TEST_DB_NAME = "vagrant_sample_test"
 
 # インストールするPHPのバージョン
-# 53, 54, 55, 56, 70
-PHP_VERSION = "70"
+# 53, 54, 55, 56, 70, 71
+PHP_VERSION = "71"
 
 # synced_folder設定
 SOURCE = "../src"

@@ -1,6 +1,6 @@
 # vagrant-centos-php
 
-php version: 5.3.29, 5.4.45, 5.5.38, 5.6.30, 7.0.15
+php version: 5.3.29, 5.4.45, 5.5.38, 5.6.30, 7.0.15, 7.1.1
 
 box: [oppara/CentOS-6.7-dev](https://atlas.hashicorp.com/oppara/boxes/CentOS-6.7-dev)
 
