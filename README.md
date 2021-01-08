@@ -2,7 +2,7 @@
 
 php version: 5.3.29, 5.4.45, 5.5.38, 5.6.30, 7.0.15
 
-box: [oppara/CentOS-6.7-dev](https://atlas.hashicorp.com/oppara/boxes/CentOS-6.7-dev)
+box: [oppara/CentOS-6.7-dev](https://app.vagrantup.com/oppara/boxes/CentOS-6.7-dev)
 
 ## Plugin
 
